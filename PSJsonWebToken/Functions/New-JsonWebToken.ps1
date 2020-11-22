@@ -23,6 +23,8 @@ function New-JsonWebToken
         This is the secret key used to generate an HMAC signature (as opposed to RSA) and should only be used for testing purposes.
     .PARAMETER ExcludeDefaultClaims
         Excludes the jti, iat, and exp default claims from the payload when using the HMAC parameter set.
+    .PARAMETER ExcludeDefaultClaims
+        Suppresses colored output.
     .EXAMPLE
 
         $claims = @{sub="$env:USERDOMAIN\$env:USERNAME";
@@ -83,7 +85,9 @@ function New-JsonWebToken
         [ValidateNotNullOrEmpty()]
         [String]$Key,
 
-        [Parameter(Mandatory=$false,Position=8)][Switch]$ExcludeDefaultClaims
+        [Parameter(Mandatory=$false,Position=8)][Switch]$ExcludeDefaultClaims,
+
+        [Parameter(Mandatory=$false,Position=9)][Switch]$NoColor
 
         )
 
@@ -170,7 +174,7 @@ function New-JsonWebToken
                 "SHA512" { $hmacAlg = "HS512" }
                 default { $hmacAlg = "HS256" }
             }
-
+            
             #1. Construct header:
             $header = [ordered]@{typ="JWT";alg=$hmacAlg} | ConvertTo-JwtPart
 
@@ -186,6 +190,26 @@ function New-JsonWebToken
             $jwt = "{0}.{1}" -f $jwtSansSig, $hmacSig
         }
 
-        return $jwt
+        if ($PSBoundParameters.ContainsKey('NoColor'))
+        {
+            return $jwt
+        }
+        else
+        {
+            $esc = [Char](0x1b)
+            $ansiGreen = "$esc[38;5;40m"
+            $ansiMagenta = "$esc[38;5;200m"
+            $ansiRed = "$esc[38;5;125m"
+            $ansiRst = "$esc[0m"
+
+            $jwtParts = $jwt.Split('.')
+            $jwtParts[0] = "{0}$($jwtParts[0]){1}" -f $ansiGreen, $ansiRst  
+            $jwtParts[1] = "{0}$($jwtParts[1]){1}" -f $ansiMagenta, $ansiRst  
+            $jwtParts[2] = "{0}$($jwtParts[2]){1}" -f $ansiRed, $ansiRst  
+            $jwt = $jwtParts -join '.'
+            
+            return $jwt
+        }
+        
     }
 }
